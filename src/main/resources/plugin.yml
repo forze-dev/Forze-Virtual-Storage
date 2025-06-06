@@ -1,13 +1,13 @@
 name: ForzeStorage
 version: '${project.version}'
-main: com.example.forzestorage.ForzeStorage
+main: com.forze.forzestorage.ForzeStorage
 api-version: '1.21'
 authors: [forze]
 description: Forze Storage plugin for Minecraft servers
 commands:
   storage:
     description: Main command for forze storage
-    usage: /storage <open|add> [player] [item] [amount]
+    usage: /storage <open|add|reload> [player] [item] [amount]
     permission: storage.use
 permissions:
   storage.use:

@@ -50,29 +50,51 @@ public class StorageManager {
     }
 
     public void addItem(OfflinePlayer player, ItemStack item, int amount) {
-        File storageFile = getStorageFile(player.getUniqueId());
-        FileConfiguration config = YamlConfiguration.loadConfiguration(storageFile);
-        
-        // Знаходимо вільний слот
-        int slot = 0;
-        while (config.contains("items." + slot)) {
-            slot++;
-        }
-        
-        // Зберігаємо предмет
-        config.set("items." + slot + ".item", item.serialize());
-        config.set("items." + slot + ".amount", amount);
-        
         try {
+            File storageFile = getStorageFile(player.getUniqueId());
+            FileConfiguration config = YamlConfiguration.loadConfiguration(storageFile);
+            
+            // Знаходимо вільний слот
+            int slot = 0;
+            while (config.contains("items." + slot)) {
+                slot++;
+                // Захист від нескінченного циклу
+                if (slot > 10000) {
+                    plugin.getLogger().warning("Сховище гравця " + player.getName() + " переповнено! Не вдалося додати предмет.");
+                    return;
+                }
+            }
+            
+            // Зберігаємо предмет використовуючи новий формат
+            config.set("items." + slot + ".material", item.getType().name());
+            config.set("items." + slot + ".amount", amount);
+            
+            // Якщо предмет має додаткові дані
+            if (item.hasItemMeta() || item.getEnchantments().size() > 0) {
+                config.set("items." + slot + ".data", item.serialize());
+            }
+            
+            // Зберігаємо файл
             config.save(storageFile);
+            
+            plugin.getLogger().info("Додано " + amount + " " + item.getType().name() + " до сховища гравця " + player.getName() + " (слот " + slot + ")");
+            
         } catch (IOException e) {
+            plugin.getLogger().severe("Не вдалося зберегти предмет до сховища гравця " + player.getName() + ": " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            plugin.getLogger().severe("Невідома помилка при додаванні предмета до сховища гравця " + player.getName() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     public void saveAllStorages() {
         for (StorageGUI gui : openStorages.values()) {
-            gui.saveStorage();
+            try {
+                gui.saveStorage();
+            } catch (Exception e) {
+                plugin.getLogger().warning("Помилка при збереженні сховища: " + e.getMessage());
+            }
         }
     }
 
@@ -85,7 +107,9 @@ public class StorageManager {
         if (!file.exists()) {
             try {
                 file.createNewFile();
+                plugin.getLogger().info("Створено новий файл сховища для гравця: " + uuid.toString());
             } catch (IOException e) {
+                plugin.getLogger().severe("Не вдалося створити файл сховища для " + uuid.toString() + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -96,7 +120,27 @@ public class StorageManager {
         try {
             config.save(getStorageFile(uuid));
         } catch (IOException e) {
+            plugin.getLogger().severe("Не вдалося зберегти конфігурацію сховища для " + uuid.toString() + ": " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    // Додатковий метод для діагностики
+    public void debugStorage(UUID uuid) {
+        FileConfiguration config = getStorageConfig(uuid);
+        plugin.getLogger().info("=== Діагностика сховища " + uuid.toString() + " ===");
+        plugin.getLogger().info("Файл існує: " + getStorageFile(uuid).exists());
+        plugin.getLogger().info("Розмір файлу: " + getStorageFile(uuid).length() + " байт");
+        
+        if (config.contains("items")) {
+            plugin.getLogger().info("Знайдено секцію items");
+            for (String key : config.getConfigurationSection("items").getKeys(false)) {
+                String material = config.getString("items." + key + ".material", "UNKNOWN");
+                int amount = config.getInt("items." + key + ".amount", 0);
+                plugin.getLogger().info("Слот " + key + ": " + material + " x" + amount);
+            }
+        } else {
+            plugin.getLogger().info("Секція items не знайдена");
         }
     }
 }

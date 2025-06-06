@@ -27,14 +27,23 @@ public class StorageListener implements Listener {
         Player player = (Player) event.getWhoClicked();
         
         // Перевіряємо, чи це сховище
-        if (!event.getView().getTitle().contains("Сховище")) return;
+        if (event.getView().getTitle() == null || !event.getView().getTitle().contains("Сховище")) return;
         
         // Отримуємо GUI сховища
         StorageGUI gui = plugin.getStorageManager().getStorage(player, false);
         if (gui == null) return;
 
-        // Перевіряємо, чи це навігаційний слот (нижній ряд)
-        if (event.getSlot() >= 45 && event.getSlot() <= 53) {
+        // СПОЧАТКУ перевіряємо клік у нижньому інвентарі (інвентар гравця)
+        if (event.getClickedInventory() != null && 
+            event.getClickedInventory().getType() == InventoryType.PLAYER) {
+            return; // Дозволяємо взаємодію з власним інвентарем
+        }
+
+        // Перевіряємо, чи це навігаційний слот (нижній ряд) ТІЛЬКИ у верхньому інвентарі
+        if (event.getClickedInventory() != null && 
+            event.getClickedInventory().getType() == InventoryType.CHEST &&
+            event.getSlot() >= 45 && event.getSlot() <= 53) {
+            
             event.setCancelled(true);
             
             // Обробка навігації
@@ -46,15 +55,9 @@ public class StorageListener implements Listener {
             return;
         }
 
-        // Якщо клік у нижньому інвентарі (інвентар гравця), дозволяємо
-        if (event.getClickedInventory() != null && 
-            event.getClickedInventory().getType() == InventoryType.PLAYER) {
-            return; // Дозволяємо взаємодію з власним інвентарем
-        }
-
         // Якщо гравець не адмін, обмежуємо дії
         if (!gui.isAdmin()) {
-            // Забороняємо shift+click та right+click для безпеки
+            // Забороняємо shift+click для безпеки
             if (event.getClick().isShiftClick()) {
                 event.setCancelled(true);
                 return;
@@ -91,7 +94,7 @@ public class StorageListener implements Listener {
         Player player = (Player) event.getPlayer();
         
         // Перевіряємо, чи це сховище
-        if (!event.getView().getTitle().contains("Сховище")) return;
+        if (event.getView().getTitle() == null || !event.getView().getTitle().contains("Сховище")) return;
         
         // Отримуємо GUI сховища
         StorageGUI gui = plugin.getStorageManager().getStorage(player, false);
