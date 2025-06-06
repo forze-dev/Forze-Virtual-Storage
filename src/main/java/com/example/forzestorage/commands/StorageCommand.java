@@ -12,9 +12,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 public class StorageCommand implements CommandExecutor {
-    private final VirtualStorage plugin;
+    private final ForzeStorage plugin;
 
-    public StorageCommand(VirtualStorage plugin) {
+    public StorageCommand(ForzeStorage plugin) {
         this.plugin = plugin;
     }
 
@@ -117,7 +117,7 @@ public class StorageCommand implements CommandExecutor {
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(ChatColor.GOLD + "=== VirtualStorage Help ===");
+        sender.sendMessage(ChatColor.GOLD + "=== ForzeStorage Help ===");
         sender.sendMessage(ChatColor.YELLOW + "/storage open " + ChatColor.WHITE + "- Відкрити своє сховище");
         if (sender.hasPermission("storage.admin")) {
             sender.sendMessage(ChatColor.YELLOW + "/storage open <гравець> " + ChatColor.WHITE + "- Відкрити сховище гравця");

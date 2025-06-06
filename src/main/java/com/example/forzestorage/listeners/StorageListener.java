@@ -15,9 +15,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class StorageListener implements Listener {
-    private final VirtualStorage plugin;
+    private final ForzeStorage plugin;
 
-    public StorageListener(VirtualStorage plugin) {
+    public StorageListener(ForzeStorage plugin) {
         this.plugin = plugin;
     }
 

@@ -16,21 +16,21 @@ import java.util.List;
 import java.util.UUID;
 
 public class StorageGUI {
-    private final VirtualStorage plugin;
+    private final ForzeStorage plugin;
     private final Player viewer;
     private final OfflinePlayer owner;
     private final boolean isAdmin;
     private int currentPage = 0;
     private static final int ITEMS_PER_PAGE = 45;
 
-    public StorageGUI(VirtualStorage plugin, Player viewer, boolean isAdmin) {
+    public StorageGUI(ForzeStorage plugin, Player viewer, boolean isAdmin) {
         this.plugin = plugin;
         this.viewer = viewer;
         this.owner = viewer;
         this.isAdmin = isAdmin;
     }
 
-    public StorageGUI(VirtualStorage plugin, Player viewer, OfflinePlayer owner, boolean isAdmin) {
+    public StorageGUI(ForzeStorage plugin, Player viewer, OfflinePlayer owner, boolean isAdmin) {
         this.plugin = plugin;
         this.viewer = viewer;
         this.owner = owner;

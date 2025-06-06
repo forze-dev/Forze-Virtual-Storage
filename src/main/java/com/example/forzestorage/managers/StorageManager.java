@@ -16,11 +16,11 @@ import java.util.Map;
 import java.util.UUID;
 
 public class StorageManager {
-    private final VirtualStorage plugin;
+    private final ForzeStorage plugin;
     private final Map<UUID, StorageGUI> openStorages;
     private final File storageFolder;
 
-    public StorageManager(VirtualStorage plugin) {
+    public StorageManager(ForzeStorage plugin) {
         this.plugin = plugin;
         this.openStorages = new HashMap<>();
         this.storageFolder = new File(plugin.getDataFolder(), "storages");
@@ -99,4 +99,4 @@ public class StorageManager {
             e.printStackTrace();
         }
     }
-} 
+}
