@@ -48,14 +48,22 @@ public class StorageGUI {
 	}
 
 	private void loadItems(Inventory inv) {
+		// Спочатку очищаємо всі слоти сховища
+		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+			inv.setItem(i, new ItemStack(Material.AIR));
+		}
+
 		FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
 		int startIndex = currentPage * ITEMS_PER_PAGE;
 
+		plugin.getLogger().info("Завантаження сторінки " + (currentPage + 1) + " для " + owner.getName()
+				+ " (індекси " + startIndex + "-" + (startIndex + ITEMS_PER_PAGE - 1) + ")");
+
+		int loadedItems = 0;
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			String path = "items." + (startIndex + i);
 			if (config.contains(path + ".material") && config.contains(path + ".amount")) {
 				try {
-					// ВИПРАВЛЕННЯ: використовуємо простіший спосіб збереження
 					String materialName = config.getString(path + ".material");
 					int amount = config.getInt(path + ".amount");
 
@@ -70,13 +78,14 @@ public class StorageGUI {
 							serializedItem.setAmount(amount);
 							item = serializedItem;
 						} catch (Exception e) {
-							// Якщо десеріалізація не вдалася, використовуємо простий предмет
 							plugin.getLogger().warning(
 									"Не вдалося десеріалізувати додаткові дані для предмета в слоті " + (startIndex + i));
 						}
 					}
 
 					inv.setItem(i, item);
+					loadedItems++;
+					plugin.getLogger().info("Завантажено предмет у слот " + i + ": " + materialName + " x" + amount);
 				} catch (IllegalArgumentException e) {
 					plugin.getLogger()
 							.warning("Невідомий матеріал у сховищі " + owner.getName() + " слот " + (startIndex + i));
@@ -86,6 +95,8 @@ public class StorageGUI {
 				}
 			}
 		}
+
+		plugin.getLogger().info("Завантажено " + loadedItems + " предметів на сторінку " + (currentPage + 1));
 	}
 
 	private void setupNavigation(Inventory inv) {
@@ -113,17 +124,24 @@ public class StorageGUI {
 					plugin.getConfig().getString("messages.next-page", "&aНаступна сторінка"));
 			inv.setItem(53, nextPage);
 		}
+
+		plugin.getLogger().info("Налаштування навігації: попередня=" + (currentPage > 0) + ", наступна=" + hasNextPage());
 	}
 
 	private boolean hasNextPage() {
 		FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
 		int nextPageStart = (currentPage + 1) * ITEMS_PER_PAGE;
 
+		// Перевіряємо чи є хоча б один предмет на наступній сторінці
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-			if (config.contains("items." + (nextPageStart + i))) {
+			String path = "items." + (nextPageStart + i);
+			if (config.contains(path + ".material") && config.contains(path + ".amount")) {
+				plugin.getLogger().info("Знайдено предмет для наступної сторінки в слоті " + (nextPageStart + i));
 				return true;
 			}
 		}
+
+		plugin.getLogger().info("Наступна сторінка порожня");
 		return false;
 	}
 
@@ -139,17 +157,35 @@ public class StorageGUI {
 
 	public void nextPage() {
 		if (hasNextPage()) {
-			currentPage++;
+			plugin.getLogger().info("Переключення на наступну сторінку: " + currentPage + " -> " + (currentPage + 1));
+
+			// Спочатку зберігаємо поточну сторінку
 			saveStorage();
+
+			// Потім переключаємося на наступну
+			currentPage++;
+
+			// І відкриваємо нову сторінку
 			open();
+		} else {
+			plugin.getLogger().info("Наступна сторінка недоступна");
 		}
 	}
 
 	public void previousPage() {
 		if (currentPage > 0) {
+			plugin.getLogger().info("Переключення на попередню сторінку: " + currentPage + " -> " + (currentPage - 1));
+
+			// Спочатку зберігаємо поточну сторінку
 			saveStorage();
+
+			// Потім переключаємося на попередню
 			currentPage--;
+
+			// І відкриваємо нову сторінку
 			open();
+		} else {
+			plugin.getLogger().info("Попередня сторінка недоступна");
 		}
 	}
 
@@ -158,12 +194,16 @@ public class StorageGUI {
 		if (viewer.getOpenInventory() == null ||
 				viewer.getOpenInventory().getTitle() == null ||
 				!viewer.getOpenInventory().getTitle().contains("Сховище")) {
+			plugin.getLogger().info("Збереження скасовано - інвентар не є сховищем");
 			return;
 		}
 
 		Inventory inv = viewer.getOpenInventory().getTopInventory();
 		FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
 		int startIndex = currentPage * ITEMS_PER_PAGE;
+
+		plugin.getLogger().info("Збереження сторінки " + (currentPage + 1) + " для " + owner.getName()
+				+ " (індекси " + startIndex + "-" + (startIndex + ITEMS_PER_PAGE - 1) + ")");
 
 		// Очищуємо поточну сторінку перед збереженням
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
@@ -172,13 +212,13 @@ public class StorageGUI {
 		}
 
 		// Зберігаємо тільки предмети з верхнього інвентаря (сховища)
+		int savedItems = 0;
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			ItemStack item = inv.getItem(i);
 			String path = "items." + (startIndex + i);
 
 			if (item != null && item.getType() != Material.AIR) {
 				try {
-					// ВИПРАВЛЕННЯ: використовуємо простіший спосіб збереження
 					config.set(path + ".material", item.getType().name());
 					config.set(path + ".amount", item.getAmount());
 
@@ -186,6 +226,10 @@ public class StorageGUI {
 					if (item.hasItemMeta() || item.getEnchantments().size() > 0) {
 						config.set(path + ".data", item.serialize());
 					}
+
+					savedItems++;
+					plugin.getLogger().info("Збережено предмет у слот " + (startIndex + i) + ": " + item.getType().name()
+							+ " x" + item.getAmount());
 				} catch (Exception e) {
 					plugin.getLogger().warning("Не вдалося зберегти предмет у сховище " + owner.getName() + " слот "
 							+ (startIndex + i) + ": " + e.getMessage());
@@ -194,6 +238,7 @@ public class StorageGUI {
 		}
 
 		plugin.getStorageManager().saveStorageConfig(owner.getUniqueId(), config);
+		plugin.getLogger().info("Збережено " + savedItems + " предметів на сторінці " + (currentPage + 1));
 	}
 
 	public boolean isAdmin() {
