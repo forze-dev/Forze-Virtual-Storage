@@ -1,0 +1,21 @@
+# Налаштування VirtualStorage
+settings:
+  # Максимальна кількість предметів на сторінку
+  items-per-page: 45
+  # Загальна кількість слотів у інвентарі
+  inventory-size: 54
+
+# Повідомлення
+messages:
+  no-permission: "&cУ вас немає прав для виконання цієї команди!"
+  player-not-found: "&cГравця не знайдено!"
+  storage-opened: "&aСховище відкрито!"
+  storage-closed: "&aСховище закрито!"
+  item-added: "&aПредмет додано до сховища!"
+  invalid-amount: "&cНевірна кількість!"
+  invalid-item: "&cНевірний предмет!"
+  storage-full: "&cСховище переповнено!"
+  page-changed: "&aСторінка змінена на %page%"
+  next-page: "&aНаступна сторінка"
+  previous-page: "&aПопередня сторінка"
+  storage-title: "&8Сховище %player%" 
