@@ -1,7 +1,7 @@
-package com.example.virtualstorage.managers;
+package com.forze.forzestorage.managers;
 
-import com.example.virtualstorage.VirtualStorage;
-import com.example.virtualstorage.gui.StorageGUI;
+import com.forze.forzestorage.ForzeStorage;
+import com.forze.forzestorage.gui.StorageGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;

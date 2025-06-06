@@ -1,6 +1,6 @@
-package com.example.virtualstorage.gui;
+package com.forze.forzestorage.gui;
 
-import com.example.virtualstorage.VirtualStorage;
+import com.forze.forzestorage.ForzeStorage;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -22,7 +22,6 @@ public class StorageGUI {
     private final boolean isAdmin;
     private int currentPage = 0;
     private static final int ITEMS_PER_PAGE = 45;
-    private static final int[] NAVIGATION_SLOTS = {45, 46, 47, 48, 49, 50, 51, 52, 53};
 
     public StorageGUI(VirtualStorage plugin, Player viewer, boolean isAdmin) {
         this.plugin = plugin;
@@ -57,14 +56,24 @@ public class StorageGUI {
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
             String path = "items." + (startIndex + i);
             if (config.contains(path)) {
-                ItemStack item = ItemStack.deserialize(config.getConfigurationSection(path + ".item").getValues(true));
-                item.setAmount(config.getInt(path + ".amount", 1));
-                inv.setItem(i, item);
+                try {
+                    ItemStack item = ItemStack.deserialize(config.getConfigurationSection(path + ".item").getValues(true));
+                    item.setAmount(config.getInt(path + ".amount", 1));
+                    inv.setItem(i, item);
+                } catch (Exception e) {
+                    // Якщо не вдалося десеріалізувати предмет, пропускаємо його
+                    plugin.getLogger().warning("Не вдалося завантажити предмет зі сховища " + owner.getName() + " слот " + (startIndex + i));
+                }
             }
         }
     }
 
     private void setupNavigation(Inventory inv) {
+        // Заповнюємо навігаційні слоти повітрям для очищення
+        for (int i = 45; i <= 53; i++) {
+            inv.setItem(i, new ItemStack(Material.AIR));
+        }
+
         // Кнопка "Попередня сторінка"
         if (currentPage > 0) {
             ItemStack prevPage = createNavigationItem(Material.ARROW, 
@@ -88,47 +97,75 @@ public class StorageGUI {
 
     private boolean hasNextPage() {
         FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
-        return config.contains("items." + ((currentPage + 1) * ITEMS_PER_PAGE));
+        // ВИПРАВЛЕННЯ: перевіряємо чи є предмети на наступній сторінці
+        int nextPageStart = (currentPage + 1) * ITEMS_PER_PAGE;
+        
+        // Перевіряємо чи є хоча б один предмет на наступній сторінці
+        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+            if (config.contains("items." + (nextPageStart + i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ItemStack createNavigationItem(Material material, String name) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
-        item.setItemMeta(meta);
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
+            item.setItemMeta(meta);
+        }
         return item;
     }
 
     public void nextPage() {
         if (hasNextPage()) {
             currentPage++;
+            // ВИПРАВЛЕННЯ: зберігаємо поточну сторінку перед переходом
+            saveStorage();
             open();
         }
     }
 
     public void previousPage() {
         if (currentPage > 0) {
+            // ВИПРАВЛЕННЯ: зберігаємо поточну сторінку перед переходом
+            saveStorage();
             currentPage--;
             open();
         }
     }
 
     public void saveStorage() {
-        if (!isAdmin) return;
+        // Перевіряємо, чи відкритий інвентар це наше сховище
+        if (viewer.getOpenInventory() == null || 
+            !viewer.getOpenInventory().getTitle().contains("Сховище")) {
+            return;
+        }
 
         Inventory inv = viewer.getOpenInventory().getTopInventory();
         FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
         int startIndex = currentPage * ITEMS_PER_PAGE;
 
+        // Очищуємо поточну сторінку перед збереженням
+        for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+            String path = "items." + (startIndex + i);
+            config.set(path, null);
+        }
+
+        // Зберігаємо тільки предмети з верхнього інвентаря (сховища)
         for (int i = 0; i < ITEMS_PER_PAGE; i++) {
             ItemStack item = inv.getItem(i);
             String path = "items." + (startIndex + i);
             
             if (item != null && item.getType() != Material.AIR) {
-                config.set(path + ".item", item.serialize());
-                config.set(path + ".amount", item.getAmount());
-            } else {
-                config.set(path, null);
+                try {
+                    config.set(path + ".item", item.serialize());
+                    config.set(path + ".amount", item.getAmount());
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Не вдалося зберегти предмет у сховище " + owner.getName() + " слот " + (startIndex + i));
+                }
             }
         }
 
@@ -146,4 +183,9 @@ public class StorageGUI {
     public OfflinePlayer getOwner() {
         return owner;
     }
-} 
+
+    // ДОДАТКОВО: метод для отримання поточної сторінки (може знадобитися)
+    public int getCurrentPage() {
+        return currentPage;
+    }
+}

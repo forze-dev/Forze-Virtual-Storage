@@ -1,6 +1,6 @@
-package com.example.virtualstorage.commands;
+package com.forze.forzestorage.commands;
 
-import com.example.virtualstorage.VirtualStorage;
+import com.forze.forzestorage.ForzeStorage;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -54,7 +54,10 @@ public class StorageCommand implements CommandExecutor {
                 player.sendMessage(getMessage("no-permission"));
                 return;
             }
-            plugin.getStorageManager().getStorage(player, false).open();
+            
+            // ВИПРАВЛЕННЯ: перевіряємо чи гравець адмін для своого сховища
+            boolean isAdmin = player.hasPermission("storage.admin");
+            plugin.getStorageManager().getStorage(player, isAdmin).open();
             player.sendMessage(getMessage("storage-opened"));
         } else if (args.length == 2) {
             // Відкрити чуже сховище (тільки для адмінів)
@@ -126,4 +129,4 @@ public class StorageCommand implements CommandExecutor {
         String message = plugin.getConfig().getString("messages." + key, "&cПовідомлення не знайдено: " + key);
         return ChatColor.translateAlternateColorCodes('&', message);
     }
-} 
+}

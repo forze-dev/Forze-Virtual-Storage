@@ -1,11 +1,11 @@
-package com.example.virtualstorage;
+package com.forze.forzestorage;
 
-import com.example.virtualstorage.commands.StorageCommand;
-import com.example.virtualstorage.listeners.StorageListener;
-import com.example.virtualstorage.managers.StorageManager;
+import com.forze.forzestorage.commands.StorageCommand;
+import com.forze.forzestorage.listeners.StorageListener;
+import com.forze.forzestorage.managers.StorageManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class VirtualStorage extends JavaPlugin {
+public class ForzeStorage extends JavaPlugin {
     private StorageManager storageManager;
 
     @Override
@@ -23,7 +23,7 @@ public class VirtualStorage extends JavaPlugin {
         // Реєструємо слухачів подій
         getServer().getPluginManager().registerEvents(new StorageListener(this), this);
 
-        getLogger().info("VirtualStorage успішно увімкнено!");
+        getLogger().info("ForzeStorage успішно увімкнено!");
     }
 
     @Override
@@ -32,10 +32,10 @@ public class VirtualStorage extends JavaPlugin {
         if (storageManager != null) {
             storageManager.saveAllStorages();
         }
-        getLogger().info("VirtualStorage успішно вимкнено!");
+        getLogger().info("ForzeStorage успішно вимкнено!");
     }
 
     public StorageManager getStorageManager() {
         return storageManager;
     }
-} 
+}
