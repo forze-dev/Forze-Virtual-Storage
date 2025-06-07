@@ -20,6 +20,7 @@ public class StorageGUI {
 	private final boolean isAdmin;
 	private int currentPage = 0;
 	private static final int ITEMS_PER_PAGE = 45;
+	private boolean isNavigating = false; // ВИПРАВЛЕННЯ: Флаг для запобігання конфліктам навігації
 
 	public StorageGUI(ForzeStorage plugin, Player viewer, boolean isAdmin) {
 		this.plugin = plugin;
@@ -36,10 +37,19 @@ public class StorageGUI {
 	}
 
 	public void open() {
+		// ВИПРАВЛЕННЯ: Перевіряємо, чи не відбувається навігація
+		if (isNavigating) {
+			plugin.getLogger().info("Навігація вже відбувається, пропускаємо відкриття");
+			return;
+		}
+
 		Inventory inv = Bukkit.createInventory(null, 54, getTitle());
 		loadItems(inv);
 		setupNavigation(inv);
 		viewer.openInventory(inv);
+
+		plugin.getLogger().info("Відкрито сховище " + owner.getName() + " для " + viewer.getName() + " (сторінка "
+				+ (currentPage + 1) + ")");
 	}
 
 	private String getTitle() {
@@ -61,11 +71,17 @@ public class StorageGUI {
 
 		int loadedItems = 0;
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-			String path = "items." + (startIndex + i);
+			int globalSlot = startIndex + i;
+			String path = "items." + globalSlot;
+
 			if (config.contains(path + ".material") && config.contains(path + ".amount")) {
 				try {
 					String materialName = config.getString(path + ".material");
 					int amount = config.getInt(path + ".amount");
+
+					if (materialName == null || amount <= 0) {
+						continue; // Пропускаємо некоректні записи
+					}
 
 					Material material = Material.valueOf(materialName);
 					ItemStack item = new ItemStack(material, amount);
@@ -79,19 +95,21 @@ public class StorageGUI {
 							item = serializedItem;
 						} catch (Exception e) {
 							plugin.getLogger().warning(
-									"Не вдалося десеріалізувати додаткові дані для предмета в слоті " + (startIndex + i));
+									"Не вдалося десеріалізувати додаткові дані для предмета в слоті " + globalSlot);
 						}
 					}
 
 					inv.setItem(i, item);
 					loadedItems++;
-					plugin.getLogger().info("Завантажено предмет у слот " + i + ": " + materialName + " x" + amount);
+					plugin.getLogger().info("Завантажено предмет у слот " + i + " (глобальний " + globalSlot + "): "
+							+ materialName + " x" + amount);
 				} catch (IllegalArgumentException e) {
 					plugin.getLogger()
-							.warning("Невідомий матеріал у сховищі " + owner.getName() + " слот " + (startIndex + i));
+							.warning("Невідомий матеріал у сховищі " + owner.getName() + " слот " + globalSlot + ": "
+									+ config.getString(path + ".material"));
 				} catch (Exception e) {
 					plugin.getLogger().warning("Не вдалося завантажити предмет зі сховища " + owner.getName() + " слот "
-							+ (startIndex + i) + ": " + e.getMessage());
+							+ globalSlot + ": " + e.getMessage());
 				}
 			}
 		}
@@ -136,8 +154,13 @@ public class StorageGUI {
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			String path = "items." + (nextPageStart + i);
 			if (config.contains(path + ".material") && config.contains(path + ".amount")) {
-				plugin.getLogger().info("Знайдено предмет для наступної сторінки в слоті " + (nextPageStart + i));
-				return true;
+				String material = config.getString(path + ".material");
+				int amount = config.getInt(path + ".amount");
+				if (material != null && amount > 0) {
+					plugin.getLogger()
+							.info("Знайдено предмет для наступної сторінки в слоті " + (nextPageStart + i) + ": " + material);
+					return true;
+				}
 			}
 		}
 
@@ -156,7 +179,14 @@ public class StorageGUI {
 	}
 
 	public void nextPage() {
+		// ВИПРАВЛЕННЯ: Захист від множинних викликів
+		if (isNavigating) {
+			plugin.getLogger().info("Навігація вже відбувається, пропускаємо nextPage");
+			return;
+		}
+
 		if (hasNextPage()) {
+			isNavigating = true;
 			plugin.getLogger().info("Переключення на наступну сторінку: " + currentPage + " -> " + (currentPage + 1));
 
 			// Спочатку зберігаємо поточну сторінку
@@ -165,15 +195,25 @@ public class StorageGUI {
 			// Потім переключаємося на наступну
 			currentPage++;
 
-			// І відкриваємо нову сторінку
-			open();
+			// Відкриваємо нову сторінку в наступному тіку
+			Bukkit.getScheduler().runTask(plugin, () -> {
+				open();
+				isNavigating = false;
+			});
 		} else {
 			plugin.getLogger().info("Наступна сторінка недоступна");
 		}
 	}
 
 	public void previousPage() {
+		// ВИПРАВЛЕННЯ: Захист від множинних викликів
+		if (isNavigating) {
+			plugin.getLogger().info("Навігація вже відбувається, пропускаємо previousPage");
+			return;
+		}
+
 		if (currentPage > 0) {
+			isNavigating = true;
 			plugin.getLogger().info("Переключення на попередню сторінку: " + currentPage + " -> " + (currentPage - 1));
 
 			// Спочатку зберігаємо поточну сторінку
@@ -182,14 +222,23 @@ public class StorageGUI {
 			// Потім переключаємося на попередню
 			currentPage--;
 
-			// І відкриваємо нову сторінку
-			open();
+			// Відкриваємо нову сторінку в наступному тіку
+			Bukkit.getScheduler().runTask(plugin, () -> {
+				open();
+				isNavigating = false;
+			});
 		} else {
 			plugin.getLogger().info("Попередня сторінка недоступна");
 		}
 	}
 
 	public void saveStorage() {
+		// ВИПРАВЛЕННЯ: Додаємо додаткові перевірки
+		if (viewer == null || !viewer.isOnline()) {
+			plugin.getLogger().info("Збереження скасовано - гравець не онлайн");
+			return;
+		}
+
 		// Перевіряємо, чи відкритий інвентар це наше сховище
 		if (viewer.getOpenInventory() == null ||
 				viewer.getOpenInventory().getTitle() == null ||
@@ -199,15 +248,21 @@ public class StorageGUI {
 		}
 
 		Inventory inv = viewer.getOpenInventory().getTopInventory();
+		if (inv == null || inv.getSize() != 54) {
+			plugin.getLogger().info("Збереження скасовано - неправильний розмір інвентаря");
+			return;
+		}
+
 		FileConfiguration config = plugin.getStorageManager().getStorageConfig(owner.getUniqueId());
 		int startIndex = currentPage * ITEMS_PER_PAGE;
 
 		plugin.getLogger().info("Збереження сторінки " + (currentPage + 1) + " для " + owner.getName()
 				+ " (індекси " + startIndex + "-" + (startIndex + ITEMS_PER_PAGE - 1) + ")");
 
-		// Очищуємо поточну сторінку перед збереженням
+		// ВИПРАВЛЕННЯ: Спочатку очищуємо тільки поточну сторінку
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
-			String path = "items." + (startIndex + i);
+			int globalSlot = startIndex + i;
+			String path = "items." + globalSlot;
 			config.set(path, null);
 		}
 
@@ -215,7 +270,8 @@ public class StorageGUI {
 		int savedItems = 0;
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			ItemStack item = inv.getItem(i);
-			String path = "items." + (startIndex + i);
+			int globalSlot = startIndex + i;
+			String path = "items." + globalSlot;
 
 			if (item != null && item.getType() != Material.AIR) {
 				try {
@@ -228,15 +284,18 @@ public class StorageGUI {
 					}
 
 					savedItems++;
-					plugin.getLogger().info("Збережено предмет у слот " + (startIndex + i) + ": " + item.getType().name()
-							+ " x" + item.getAmount());
+					plugin.getLogger()
+							.info("Збережено предмет у глобальний слот " + globalSlot + " (локальний " + i + "): "
+									+ item.getType().name()
+									+ " x" + item.getAmount());
 				} catch (Exception e) {
 					plugin.getLogger().warning("Не вдалося зберегти предмет у сховище " + owner.getName() + " слот "
-							+ (startIndex + i) + ": " + e.getMessage());
+							+ globalSlot + ": " + e.getMessage());
 				}
 			}
 		}
 
+		// ВИПРАВЛЕННЯ: Зберігаємо конфігурацію одразу
 		plugin.getStorageManager().saveStorageConfig(owner.getUniqueId(), config);
 		plugin.getLogger().info("Збережено " + savedItems + " предметів на сторінці " + (currentPage + 1));
 	}
@@ -255,5 +314,16 @@ public class StorageGUI {
 
 	public int getCurrentPage() {
 		return currentPage;
+	}
+
+	// ВИПРАВЛЕННЯ: Додаємо метод для діагностики
+	public void debugCurrentState() {
+		plugin.getLogger().info("=== Стан StorageGUI ===");
+		plugin.getLogger().info("Viewer: " + viewer.getName());
+		plugin.getLogger().info("Owner: " + owner.getName());
+		plugin.getLogger().info("Current Page: " + currentPage);
+		plugin.getLogger().info("Is Admin: " + isAdmin);
+		plugin.getLogger().info("Is Navigating: " + isNavigating);
+		plugin.getLogger().info("Has Next Page: " + hasNextPage());
 	}
 }
